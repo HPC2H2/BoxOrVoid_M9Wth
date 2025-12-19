@@ -14,27 +14,17 @@
           {{ currentPlayer === 6 ? "白" : "黑" }}
         </text>
       </text>
-      <text class="hint">白走黑墙 · 黑走白地</text>
+      <text class="hint">白走黑，黑走白</text>
     </div>
 
     <!-- 画布 -->
     <div class="gameArea">
       <div class="row" for="(y, indexY) in [0, 1, 2, 3, 4, 5]">
-        <div
-          class="cell"
-          style="background-color: {{ getCellBg(y, x) }}; 
+        <div class="cell" style="background-color: {{ getCellBg(y, x) }}; 
                     border-color: {{ getCellBorder(y, x) }}"
-          for="(x, indexX) in [0, 1, 2, 3]"
-        >
-          <text
-            class="icon"
-            style="color: {{ (y == whiteY && x == whiteX) ? 
-            getIconColor(6) : (y == blackY && x == blackX) ? 
-            getIconColor(7) : 'transparent' }};"
-          >
-            {{
-              y == whiteY && x == whiteX ? getIcon(6) : y == blackY && x == blackX ? getIcon(7) : ""
-            }}
+          for="(x, indexX) in [0, 1, 2, 3]">
+          <text class="icon" style="color: {{ getIconColor(y, x) }};">
+            {{ getIcon(y, x) }}
           </text>
         </div>
       </div>
@@ -44,14 +34,20 @@
     <div class="playerStatus">
       <div class="playerBox whiteBox">
         <text class="playerPos">白: ({{ whiteX }}, {{ whiteY }})</text>
+        <text class="boxCount">箱: {{ whiteBoxes.length }} / {{ whiteTargets.length }}</text>
       </div>
       <div class="playerBox blackBox">
         <text class="playerPos">黑: ({{ blackX }}, {{ blackY }})</text>
+        <text class="boxCount">箱: {{ blackBoxes.length }} / {{ blackTargets.length }}</text>
       </div>
     </div>
 
     <!-- 控制区域 -->
     <div class="controlArea">
+      <!-- 重置按钮 -->
+      <div class="btnReset" style="background-color: {{ resetBtnColor }}" onclick="onReset">
+        <text class="btnText">重置</text>
+      </div>
       <!-- 切换角色按钮（input不支持background-color，改为div） -->
       <div class="switchArea">
         <div class="btnSwitch" id="switchBtn" style="background-color: {{ switchBtnColor }}" onclick="onSwitch">
@@ -89,8 +85,9 @@ const prompt = require("@system.prompt")
 export default {
   private: {
       // 疑似二维数组不触发UI更新，换一维键值对
+      // 地图规则: 0=白地, 1=黑墙
       mapRules: {
-        // key: "y,x", value: 0/1
+      // key: "y,x", value: 0/1
       },
       whiteX: 0,
       whiteY: 1,
@@ -103,11 +100,47 @@ export default {
       upBtnColor: "#36D1DC",
       downBtnColor: "#36D1DC",
       leftBtnColor: "#36D1DC",
-      rightBtnColor: "#36D1DC"
+      rightBtnColor: "#36D1DC",
+
+      // 箱子数据
+      whiteBoxes: [],
+      blackBoxes: [],
+      // 目标点
+      whiteTargets: [],
+      blackTargets: [],
   },
 
   onInit() {
+    this.initLevel()
+  },
+  
+  initLevel() {
     this.initMapRules()
+    this.initBoxes()
+    this.initTargets()
+  },
+  initBoxes() {
+    // 白箱子只能在黑墙或黑角色上移动
+    this.whiteBoxes = [
+      {x: 1, y: 2},
+      {x: 2, y: 1}
+    ]
+    // 黑箱子只能在白地或白角色上移动
+    this.blackBoxes = [
+      {x: 1, y: 4}
+    ]
+  },
+  
+  initTargets() {
+    // 白箱子目标点
+    this.whiteTargets = [
+      {x: 1, y: 5},
+      {x: 2, y: 5}
+    ]
+    // 黑箱子目标点
+    this.blackTargets = [
+      {x: 2, y: 3}
+    ]
   },
 
   initMapRules() {
@@ -149,11 +182,20 @@ export default {
   },
 
   getCellBg(y, x) {
-    // 角色位置
+    // 检查是否是目标点
+    const isWhiteTarget = this.whiteTargets.some(t => t.x === x && t.y === y)
+    const isBlackTarget = this.blackTargets.some(t => t.x === x && t.y === y)
+    const hasWhiteBox = this.whiteBoxes.some(b => b.x === x && b.y === y)
+    const hasBlackBox = this.blackBoxes.some(b => b.x === x && b.y === y)
+    
+    // 优先级: 角色 > 箱子 > 目标点 > 地图
     if (y === this.whiteY && x === this.whiteX) return "#ECF0F1"
     if (y === this.blackY && x === this.blackX) return "#34495E"
-
-    // 普通地图
+    if (hasWhiteBox) return "#BBBBBB"
+    if (hasBlackBox) return "#222222"
+    if (isWhiteTarget) return "#FFE4E1"
+    if (isBlackTarget) return "#E6E6FA"
+    
     return this.getMapValue(y, x) === 0 ? "#F8F8F8" : "#555555"
   },
 
@@ -164,6 +206,13 @@ export default {
 
     // 普通地图
     return "#CCCCCC"
+  },
+
+  // 重置关卡
+  onReset() {
+    this.resetBtnColor = "#8E44AD"
+    setTimeout(() => { this.resetBtnColor = "#9B59B6" }, 100)
+    this.initLevel()
   },
 
   // 切换角色
@@ -197,77 +246,187 @@ export default {
     setTimeout(() => (this[`${type}BtnColor`] = "#36D1DC"), 100)
   },
 
-  move(dx, dy) {
-    const isWhite = this.currentPlayer === 6
-    let [x, y] = isWhite ? [this.whiteX, this.whiteY] : [this.blackX, this.blackY]
-    // console.log(`当前角色: ${isWhite ? '白' : '黑'}，
-    // 当前位置: (${x}, ${y})，移动向量: (${dx}, ${dy})`);
-    const [nx, ny] = [x + dx, y + dy]
-    // 边界检查：4列(0-3), 6行(0-5)
-    if (nx < 0 || nx >= 4 || ny < 0 || ny >= 6) {
-      prompt.showToast({
-        message: "不能越界！",
-        duration: 800
-      })
-      return
-    }
+  move(dx, dy) { 
+        const isWhite = this.currentPlayer === 6 
+        let [x, y] = isWhite? [this.whiteX, this.whiteY] : [this.blackX, this.blackY] 
+        const [nx, ny] = [x + dx, y + dy] 
+        const width = 4, height = 6 
+        
+        // 边界检查 
+        if (nx < 0 || nx >= width || ny < 0 || ny >= height) { 
+            prompt.showToast({ message: "不能越界！", duration: 800 }) 
+            return 
+        } 
 
-    const target = this.getMapValue(ny, nx)
+        const targetValue = this.getMapValue(ny, nx) 
+        
+        // 确定另一角色的位置
+        const otherX = isWhite? this.blackX : this.whiteX;
+        const otherY = isWhite? this.blackY : this.whiteY;
+        
+        // 检查是否是另一角色 (允许互相踩踏，忽略地形限制)
+        const isTargetOppositePlayer = (nx === otherX && ny === otherY);
+        if (isTargetOppositePlayer) {
+            // 允许踩踏，直接跳过所有地形和箱子检查，直接更新位置
+            if (isWhite) {
+                this.whiteX = nx
+                this.whiteY = ny
+            } else {
+                this.blackX = nx
+                this.blackY = ny
+            }
+            this.checkWinCondition()
+            return
+        }
 
-    // 不能走到另一个角色所在位置
-    if ((nx === this.whiteX && ny === this.whiteY) || (nx == this.blackX && ny == this.blackY)) {
-      prompt.showToast({
-        message: "不能走到另一个角色位置！",
-        duration: 800
-      })
-      return
-    }
 
-    // 路径限制
-    if (isWhite && target !== 1) {
-      prompt.showToast({
-        message: "白角色只能走黑墙！",
-        duration: 1000
-      })
-      return
-    }
-    if (!isWhite && target !== 0) {
-      prompt.showToast({
-        message: "黑角色只能走白地！",
-        duration: 1000
-      })
-      return
-    }
+        // 检查是否是箱子 
+        const whiteBoxIndex = this.whiteBoxes.findIndex(b => b.x === nx && b.y === ny) 
+        const blackBoxIndex = this.blackBoxes.findIndex(b => b.x === nx && b.y === ny) 
 
-    // 更新角色坐标
-    if (isWhite) {
-      this.whiteX = nx
-      this.whiteY = ny
-    } else {
-      this.blackX = nx
-      this.blackY = ny
-    }
+        if (whiteBoxIndex !== -1 || blackBoxIndex !== -1) { 
+            // --- 目标位置是箱子 --- 
+            const boxColor = whiteBoxIndex !== -1? 'white' : 'black' 
+            const isMyBox = (isWhite && boxColor === 'white') || (!isWhite && boxColor === 'black') 
+
+            if (isMyBox) {
+                // PUSHING OWN BOX LOGIC (推动自己颜色的箱子)
+
+                const boxIndex = whiteBoxIndex !== -1? whiteBoxIndex : blackBoxIndex 
+                const boxes = boxColor === 'white'? this.whiteBoxes : this.blackBoxes 
+
+                // 计算箱子的下一个位置 
+                const boxNextX = nx + dx 
+                const boxNextY = ny + dy 
+
+                // 1. 箱子目标位置检查：边界
+                if (boxNextX < 0 || boxNextX >= width || boxNextY < 0 || boxNextY >= height) { 
+                    prompt.showToast({ message: "箱子不能越界！", duration: 800 }) 
+                    return 
+                } 
+
+                // 检查箱子目标位置是否被另一个箱子占用
+                const occupiedByBox = 
+                    this.whiteBoxes.some((b, i) => i !== whiteBoxIndex && b.x === boxNextX && b.y === boxNextY) | 
+                    this.blackBoxes.some((b, i) => i !== blackBoxIndex && b.x === boxNextX && b.y === boxNextY)
+
+                // 检查箱子目标位置是否被角色占用 (如果不是踩踏，理论上角色不该在箱子下一格)
+                const occupiedByPlayer = (boxNextX === this.whiteX && boxNextY === this.whiteY) || (boxNextX === this.blackX && boxNextY === this.blackY)
+
+                if (occupiedByBox || occupiedByPlayer) { 
+                    prompt.showToast({ message: "箱子前方被阻挡！", duration: 800 }) 
+                    return 
+                } 
+
+                // 2. 箱子地形限制检查
+                const boxNextValue = this.getMapValue(boxNextY, boxNextX) 
+                
+                // 白箱子只能在黑墙(1)上移动 
+                if (boxColor === 'white' && boxNextValue !== 1) { 
+                    prompt.showToast({ message: "白箱子只能在黑墙上移动！", duration: 1000 }) 
+                    return 
+                } 
+                // 黑箱子只能在白地(0)上移动 
+                if (boxColor === 'black' && boxNextValue !== 0) { 
+                    prompt.showToast({ message: "黑箱子只能在白地上移动！", duration: 1000 }) 
+                    return 
+                } 
+
+                // 推动成功
+                boxes[boxIndex].x = boxNextX 
+                boxes[boxIndex].y = boxNextY 
+
+                // 更新角色坐标
+                if (isWhite) {
+                    this.whiteX = nx
+                    this.whiteY = ny
+                } else {
+                    this.blackX = nx
+                    this.blackY = ny
+                }
+
+            } else {
+                // WALKING ONTO OPPOSITE BOX LOGIC (走上相反颜色的箱子)
+                // 允许移动，直接更新角色位置，不推动箱子
+                 if (isWhite) {
+                    this.whiteX = nx
+                    this.whiteY = ny
+                } else {
+                    this.blackX = nx
+                    this.blackY = ny
+                }
+            }
+        } else { 
+            // --- 目标位置是空地形 --- 
+            
+            // 正常地形检查 (如果不是踩踏或推箱子，则需要检查地形颜色)
+            if (isWhite && targetValue !== 1) { 
+                prompt.showToast({ message: "白角色只能走黑墙！", duration: 1000 }) 
+                return 
+            } 
+            if (!isWhite && targetValue !== 0) { 
+                prompt.showToast({ message: "黑角色只能走白地！", duration: 1000 }) 
+                return 
+            } 
+            
+            // 地形检查通过，更新角色坐标
+            if (isWhite) {
+                this.whiteX = nx
+                this.whiteY = ny
+            } else {
+                this.blackX = nx
+                this.blackY = ny
+            }
+        }
+
+        this.checkWinCondition()
+    }, 
+
+
+  getIconColor(y, x) {
+    return "#FFFFFF"
   },
 
-  getIconColor(value) {
-    switch (value) {
-      case 6:
-        return "#3498DB" // 蓝色图标
-      case 7:
-        return "#E74C3C" // 红色图标
-      default:
-        return "#00000000" // 透明
-    }
+  getIcon(y, x) {
+    // 角色图标
+    if (y === this.whiteY && x === this.whiteX) return "●"
+    if (y === this.blackY && x === this.blackX) return "●"
+    
+    // 箱子图标
+    const hasWhiteBox = this.whiteBoxes.some(b => b.x === x && b.y === y)
+    const hasBlackBox = this.blackBoxes.some(b => b.x === x && b.y === y)
+        if (hasWhiteBox | hasBlackBox) return "■"
+
+    
+    return ""
   },
 
-  getIcon(value) {
-    switch (value) {
-      case 6:
-        return "●" // 白角色
-      case 7:
-        return "●" // 黑角色
-      default:
-        return ""
+  checkWinCondition() {
+    // 检查所有白箱子是否在白目标点上
+    const whiteWin = this.whiteBoxes.every(box => 
+      this.whiteTargets.some(target => target.x === box.x && target.y === box.y)
+    )
+    
+    // 检查所有黑箱子是否在黑目标点上
+    const blackWin = this.blackBoxes.every(box => 
+      this.blackTargets.some(target => target.x === box.x && target.y === box.y)
+    )
+    
+    // 所有箱子都到位
+    if (whiteWin && blackWin && (this.whiteBoxes.length > 0 || this.blackBoxes.length > 0)) {
+      prompt.showDialog({
+        title: "恭喜通关！",
+        message: "你成功将所有箱子推到目标点！",
+        buttons: [
+          { text: "继续", color: "#667eea" },
+          { text: "重玩", color: "#FF416C" }
+        ],
+        success: (data) => {
+          if (data.index === 1) {
+            this.initLevel()
+          }
+        }
+      })
     }
   }
 }
@@ -436,5 +595,10 @@ export default {
   font-size: 15px; /* 增大文字尺寸 */
   font-weight: bold;
   text-align: center;
+}
+
+.boxCount { 
+  font-size: 10px;
+  margin-top: 2px;
 }
 </style>
