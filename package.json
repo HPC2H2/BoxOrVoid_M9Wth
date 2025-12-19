@@ -10,7 +10,7 @@
     "build": "aiot build",
     "release": "aiot release",
     "lint": "eslint --format codeframe --fix --ext .ux,.js src/",
-    "prepare": "npx husky install" 
+    "prepare": "husky"
   },
   "lint-staged": {
     "*.{ux,js}": [
