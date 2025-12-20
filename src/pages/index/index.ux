@@ -96,12 +96,12 @@ export default {
       currentPlayer: 7, // 黑
       moveCount: 0,
       // 按钮颜色
-      switchBtnColor: "#FF416C",
-      upBtnColor: "#36D1DC",
-      downBtnColor: "#36D1DC",
-      leftBtnColor: "#36D1DC",
-      rightBtnColor: "#36D1DC",
-      resetBtnColor: "#8E44AD",
+      switchBtnColor: "#3498DB",   // 蓝色：切换
+      upBtnColor: "#2ECC71",       // 绿色：向上
+      downBtnColor: "#2ECC71",
+      leftBtnColor: "#2ECC71",
+      rightBtnColor: "#2ECC71",
+      resetBtnColor: "#E74C3C",    // 红色：重置
 
       // 箱子数据
       whiteBoxes: [],
@@ -184,31 +184,27 @@ export default {
 
   // 返回画布中单元格背景颜色
   getCellBg(y, x) {
-    // 检查是否是目标点
     const isWhiteTarget = this.whiteTargets.some(t => t.x === x && t.y === y)
     const isBlackTarget = this.blackTargets.some(t => t.x === x && t.y === y)
     const hasWhiteBox = this.whiteBoxes.some(b => b.x === x && b.y === y)
     const hasBlackBox = this.blackBoxes.some(b => b.x === x && b.y === y)
     
     // 优先级: 角色 > 箱子 > 目标点 > 地图
-    if (y === this.whiteY && x === this.whiteX) return "#ECF0F1"
-    if (y === this.blackY && x === this.blackX) return "#34495E"
-    if (hasWhiteBox) return "#DDDDDD"
-    if (hasBlackBox) return "#222222"
-    if (isWhiteTarget) return "#FFE4E1"
+    if (y === this.whiteY && x === this.whiteX) return "#FFFFFF"
+    if (y === this.blackY && x === this.blackX) return "#000000"
+    if (hasWhiteBox) return "#E0E0E0"
+    if (hasBlackBox) return "#1A1A1A"
+    if (isWhiteTarget) return "#FCD3D3"
     if (isBlackTarget) return "#333333"
-    
-    return this.getMapValue(y, x) === 0 ? "#F8F8F8" : "#555555"
+
+    return this.getMapValue(y, x) === 0 ? "#F8F9FA" : "#2D3748"
   },
 
   // 返回画布中单元格边框颜色
   getCellBorder(y, x) {
-    // 角色位置
     if (y === this.whiteY && x === this.whiteX) return "#3498DB"
     if (y === this.blackY && x === this.blackX) return "#E74C3C"
-
-    // 普通地图
-    return "#CCCCCC"
+    return "#333333"
   },
 
   // 重置关卡
@@ -449,7 +445,7 @@ export default {
   flex-direction: column;
   align-items: center;
   padding: 8px;
-  background-color: #667eea;
+  background-color: #1A1A1A; /* 深蓝灰背景 */
   height: 100%;
   width: 100%;
 }
@@ -493,14 +489,10 @@ export default {
 .gameArea {
   display: flex;
   flex-direction: column;
-  background-color: #555555;
+  background-color: #1A2530; /* 深灰蓝 */
   padding: 2px;
   margin: 8px 0;
   border-radius: 4px;
-}
-
-.row {
-  display: flex;
 }
 
 .cell {
@@ -509,7 +501,11 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid;
+  border: 1px solid #333333;
+}
+
+.row {
+  display: flex;
 }
 
 .icon {
@@ -533,15 +529,14 @@ export default {
   flex-direction: column;
   align-items: center;
 }
-
 .whiteBox {
-  background-color: #f0f0f0;
+  background-color: #F8F9FA;
   color: #333333;
 }
 
 .blackBox {
-  background-color: #333333;
-  color: #ffffff;
+  background-color: #1A1A1A;
+  color: #FFFFFF;
 }
 
 .playerPos {
