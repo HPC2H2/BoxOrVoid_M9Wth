@@ -86,6 +86,10 @@ export default {
     currentPlayer: 7, // 黑
     moveCount: 0,
     // 按钮颜色
+    DEFAULT_SWITCH_COLOR: "#3498DB",
+    DEFAULT_RESET_COLOR: "#E74C3C",
+    DEFAULT_ARROW_COLOR: "#2ECC71",
+    
     switchBtnColor: "#3498DB", // 蓝色：切换
     upBtnColor: "#2ECC71", // 绿色：向上
     downBtnColor: "#2ECC71",
@@ -96,9 +100,13 @@ export default {
     // 箱子数据
     whiteBoxes: [],
     blackBoxes: [],
-    // 目标点
-    whiteTargets: [],
-    blackTargets: []
+    // 箱子目标点
+    whiteBoxTargets: [],
+    blackBoxTargets: [],
+
+    // 角色目标点
+    whiteCharacterTarget: [],
+    blackCharacterTarget: [],
   },
 
   onInit() {
@@ -121,13 +129,21 @@ export default {
   },
 
   initTargets() {
-    // 白箱子目标点(智能初始化在黑色位置)
-    this.whiteTargets = [
+    // 1.箱子目标点
+    // 白箱子目标点(在黑色位置)
+    this.whiteBoxTargets = [
       {x: 1, y: 6},
       {x: 3, y: 6}
     ]
     // 黑箱子目标点
-    this.blackTargets = [{x: 3, y: 3}]
+    this.blackBoxTargets = [{x: 3, y: 3}]
+
+    // 2. 角色目标点
+    // 白角色目标点(在黑色位置)
+    this.whiteCharacterTarget = [{x: 1, y: 5}]
+
+    // 黑角色目标点
+    this.blackCharacterTarget = [{x: 4, y: 2}]
   },
 
   initMapRules() {
@@ -172,18 +188,28 @@ export default {
 
   // 返回画布中单元格背景颜色
   getCellBg(y, x) {
-    const isWhiteTarget = this.whiteTargets.some((t) => t.x === x && t.y === y)
-    const isBlackTarget = this.blackTargets.some((t) => t.x === x && t.y === y)
+    const isWhiteBoxTarget = this.whiteBoxTargets.some((t) => t.x === x && t.y === y)
+    const isBlackBoxTarget = this.blackBoxTargets.some((t) => t.x === x && t.y === y)
     const hasWhiteBox = this.whiteBoxes.some((b) => b.x === x && b.y === y)
     const hasBlackBox = this.blackBoxes.some((b) => b.x === x && b.y === y)
-
-    // 优先级: 角色 > 箱子 > 目标点 > 地图
+  
+    // 优先级: 角色 > 箱子 > 箱子目标点 > 地图
     if (y === this.whiteY && x === this.whiteX) return "#FFFFFF"
     if (y === this.blackY && x === this.blackX) return "#000000"
     if (hasWhiteBox) return "#E0E0E0"
     if (hasBlackBox) return "#1A1A1A"
-    if (isWhiteTarget) return "#FCD3D3"
-    if (isBlackTarget) return "#333333"
+    if (isWhiteBoxTarget) return "#FCD3D3"
+    if (isBlackBoxTarget) return "#333333"
+  
+  // 角色目标点
+  // 白位的坐标
+  const whitePosition = {x: 1, y: 5}; 
+  // 黑位的坐标
+  const blackPosition = {x: 4, y: 2};
+
+  if (y === whitePosition.y && x === whitePosition.x) return "#D3D3D3"; // 设置白位的背景颜色为浅灰色
+  if (y === blackPosition.y && x === blackPosition.x) return "#555555"; // 设置黑位的背景颜色为中灰色
+
 
     return this.getMapValue(y, x) === 0 ? "#F8F9FA" : "#2D3748"
   },
@@ -197,20 +223,30 @@ export default {
 
   // 重置关卡
   onReset() {
-    this.resetBtnColor = "#8E44AD"
+    
+    // 恢复游戏初始状态
+    this.initLevel();
+    
+    // 设置新的颜色
+    this.resetBtnColor = "#9B59B6";
+    
+    // 在设定的时间后，恢复原始颜色
     setTimeout(() => {
-      this.resetBtnColor = "#9B59B6"
-    }, 100)
-    this.initLevel()
+      this.resetBtnColor = this.DEFAULT_RESET_COLOR;
+    }, 500); 
   },
 
   // 切换角色
   onSwitch() {
-    this.currentPlayer = this.currentPlayer === 6 ? 7 : 6
-    this.switchBtnColor = "#E03A5F"
+    this.currentPlayer = this.currentPlayer === 6 ? 7 : 6;
+    
+    // 设置新的颜色
+    this.switchBtnColor = "#FF416C";
+    
+    // 在设定的时间后，恢复原始颜色
     setTimeout(() => {
-      this.switchBtnColor = "#FF416C"
-    }, 100)
+      this.switchBtnColor = this.DEFAULT_SWITCH_COLOR;
+    }, 500);
   },
 
   onUp() {
@@ -231,8 +267,13 @@ export default {
   },
 
   btnFlash(type) {
-    this[`${type}BtnColor`] = "#2EB8C2"
-    setTimeout(() => (this[`${type}BtnColor`] = "#36D1DC"), 100)
+    // 设置新的颜色
+    this[`${type}BtnColor`] = "#36D1DC";
+    
+    // 在设定的时间后，恢复原始颜色
+    setTimeout(() => {
+      this[`${type}BtnColor`] = this.DEFAULT_ARROW_COLOR;
+    }, 200); 
   },
 
   move(dx, dy) {
@@ -253,8 +294,8 @@ export default {
     const otherY = isWhite ? this.blackY : this.whiteY;
     const isTargetOppositePlayer = nx === otherX && ny === otherY;
 
-    const isWhiteBoxTarget = this.whiteTargets.some(t => t.x === nx && t.y === ny);
-    const isBlackBoxTarget = this.blackTargets.some(t => t.x === nx && t.y === ny);
+    const isWhiteBoxTarget = this.whiteBoxTargets.some(t => t.x === nx && t.y === ny);
+    const isBlackBoxTarget = this.blackBoxTargets.some(t => t.x === nx && t.y === ny);
 
     const hasWhiteBox = this.whiteBoxes.some(b => b.x === nx && b.y === ny);
     const hasBlackBox = this.blackBoxes.some(b => b.x === nx && b.y === ny);
@@ -306,7 +347,7 @@ export default {
 
         // 检查箱子目标地形
         const boxNextValue = this.getMapValue(boxNextY, boxNextX);
-        const onBlackTarget = this.blackTargets.some(t => t.x === boxNextX && t.y === boxNextY);
+        const onBlackTarget = this.blackBoxTargets.some(t => t.x === boxNextX && t.y === boxNextY);
 
         if (boxNextValue !== 1 && !onBlackTarget) {
           prompt.showToast({ message: "白箱子只能在黑色地形上移动！", duration: 1000 });
@@ -349,7 +390,7 @@ export default {
         }
 
         const boxNextValue = this.getMapValue(boxNextY, boxNextX);
-        const onWhiteTarget = this.whiteTargets.some(t => t.x === boxNextX && t.y === boxNextY);
+        const onWhiteTarget = this.whiteBoxTargets.some(t => t.x === boxNextX && t.y === boxNextY);
 
         if (boxNextValue !== 0 && !onWhiteTarget) {
           prompt.showToast({ message: "黑箱子只能在白色地形上移动！", duration: 1000 });
@@ -394,11 +435,17 @@ export default {
     if (hasWhiteBox) return "#333333"
     if (hasBlackBox) return "#FFFFFF"
 
-    // 目标点图标
-    const isWhiteTarget = this.whiteTargets.some((t) => t.x === x && t.y === y)
-    const isBlackTarget = this.blackTargets.some((t) => t.x === x && t.y === y)
-    if (isWhiteTarget) return "#333333"
-    if (isBlackTarget) return "#FFFFFF"
+    // 箱子目标点图标
+    const isWhiteBoxTarget = this.whiteBoxTargets.some((t) => t.x === x && t.y === y)
+    const isBlackBoxTarget = this.blackBoxTargets.some((t) => t.x === x && t.y === y)
+    if (isWhiteBoxTarget) return "#333333"
+    if (isBlackBoxTarget) return "#FFFFFF"
+
+    // 角色目标点图标
+    const whitePosition = {x: 1, y: 5};
+    const blackPosition = {x: 4, y: 2};
+    if (y === whitePosition.y && x === whitePosition.x) return "#333333";
+    if (y === blackPosition.y && x === blackPosition.x) return "#FFFFFF";
 
     return "#000000"
   },
@@ -413,23 +460,31 @@ export default {
     const hasBlackBox = this.blackBoxes.some((b) => b.x === x && b.y === y)
     if (hasWhiteBox | hasBlackBox) return "箱"
 
-    // 目标点图标
-    const isWhiteTarget = this.whiteTargets.some((t) => t.x === x && t.y === y)
-    const isBlackTarget = this.blackTargets.some((t) => t.x === x && t.y === y)
-    if (isWhiteTarget) return "箱位"
-    if (isBlackTarget) return "箱位"
+    // 箱子目标点图标
+    const isWhiteBoxTarget = this.whiteBoxTargets.some((t) => t.x === x && t.y === y)
+    const isBlackBoxTarget = this.blackBoxTargets.some((t) => t.x === x && t.y === y)
+    if (isWhiteBoxTarget) return "箱位"
+    if (isBlackBoxTarget) return "箱位"
+
+
+    // 角色目标点图标
+    const whitePosition = {x: 1, y: 5};
+    const blackPosition = {x: 4, y: 2};
+    if (y === whitePosition.y && x === whitePosition.x) return "白位";
+    if (y === blackPosition.y && x === blackPosition.x) return "黑位";
+
     return ""
   },
 
   checkWinCondition() {
     // 检查所有白箱子是否在白目标点上
     const whiteWin = this.whiteBoxes.every((box) =>
-      this.whiteTargets.some((target) => target.x === box.x && target.y === box.y)
+      this.whiteBoxTargets.some((target) => target.x === box.x && target.y === box.y)
     )
 
     // 检查所有黑箱子是否在黑目标点上
     const blackWin = this.blackBoxes.every((box) =>
-      this.blackTargets.some((target) => target.x === box.x && target.y === box.y)
+      this.blackBoxTargets.some((target) => target.x === box.x && target.y === box.y)
     )
 
     // 所有箱子都到位
